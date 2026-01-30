@@ -1,0 +1,16 @@
+{
+  "name": "daily-briefing",
+  "version": "1.0.0",
+  "description": "CLI tool that generates a morning briefing with weather, calendar, git status, system health, and Kubernetes status",
+  "main": "src/index.js",
+  "bin": {
+    "daily-briefing": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node src/index.js --help"
+  },
+  "keywords": ["cli", "briefing", "morning", "dashboard", "weather", "git", "kubernetes"],
+  "author": "wortmanb",
+  "license": "MIT"
+}
