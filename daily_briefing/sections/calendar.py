@@ -5,8 +5,9 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-# Default path for service account key
+# Default paths
 DEFAULT_KEY_PATH = Path.home() / ".config" / "daily-briefing" / "service-account.json"
+DEFAULT_CALENDARS_PATH = Path.home() / ".config" / "daily-briefing" / "calendars.json"
 
 
 def _get_key_path():
@@ -21,6 +22,36 @@ def _get_key_path():
     return None
 
 
+def _get_calendar_ids():
+    """Load calendar IDs from config file or env var.
+
+    Config file format (JSON array):
+        [{"id": "user@example.com", "name": "Personal"}, ...]
+
+    Env var format (comma-separated):
+        GOOGLE_CALENDAR_IDS=user@example.com,work@example.com
+    """
+    env_ids = os.environ.get("GOOGLE_CALENDAR_IDS")
+    if env_ids:
+        return [{"id": c.strip(), "name": c.strip()} for c in env_ids.split(",") if c.strip()]
+
+    cal_path = os.environ.get("GOOGLE_CALENDARS_FILE")
+    if cal_path:
+        p = Path(cal_path).expanduser()
+    else:
+        p = DEFAULT_CALENDARS_PATH
+
+    if p.exists():
+        try:
+            with open(p) as f:
+                cals = json.load(f)
+            return [{"id": c["id"], "name": c.get("name", c["id"])} for c in cals]
+        except (json.JSONDecodeError, KeyError):
+            pass
+
+    return []
+
+
 def get_calendar(args):
     key_path = _get_key_path()
     if not key_path:
@@ -33,7 +64,20 @@ def get_calendar(args):
                 "  2. Download the JSON key\n"
                 "  3. Place it at ~/.config/daily-briefing/service-account.json\n"
                 "     or set GOOGLE_SA_KEY=/path/to/key.json\n"
-                "  4. Share your calendar(s) with the service account email"
+                "  4. Share your calendar(s) with the service account email\n"
+                "  5. Add calendar IDs to ~/.config/daily-briefing/calendars.json"
+            ),
+        }
+
+    calendar_ids = _get_calendar_ids()
+    if not calendar_ids:
+        return {
+            "available": False,
+            "note": (
+                "No calendar IDs configured — skipping.\n"
+                "  Add calendars to ~/.config/daily-briefing/calendars.json:\n"
+                '  [{"id": "you@example.com", "name": "Personal"}]\n'
+                "  Or set GOOGLE_CALENDAR_IDS=you@example.com,work@example.com"
             ),
         }
 
@@ -57,38 +101,36 @@ def get_calendar(args):
         service = build("calendar", "v3", credentials=credentials, cache_discovery=False)
 
         now = datetime.now(timezone.utc)
-        # Start of today (local midnight approximated as UTC for simplicity;
-        # the API will return events around now regardless)
         start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
         end_of_day = start_of_day + timedelta(days=1)
 
         time_min = start_of_day.isoformat()
         time_max = end_of_day.isoformat()
 
-        # List all calendars the service account can see
-        calendar_list = service.calendarList().list().execute()
-        calendars = calendar_list.get("items", [])
-
         all_events = []
-        for cal in calendars:
+        for cal in calendar_ids:
             cal_id = cal["id"]
-            events_result = (
-                service.events()
-                .list(
-                    calendarId=cal_id,
-                    timeMin=time_min,
-                    timeMax=time_max,
-                    singleEvents=True,
-                    orderBy="startTime",
-                    maxResults=50,
+            cal_name = cal["name"]
+            try:
+                events_result = (
+                    service.events()
+                    .list(
+                        calendarId=cal_id,
+                        timeMin=time_min,
+                        timeMax=time_max,
+                        singleEvents=True,
+                        orderBy="startTime",
+                        maxResults=50,
+                    )
+                    .execute()
                 )
-                .execute()
-            )
+            except Exception:
+                # Calendar not accessible — skip silently
+                continue
+
             for event in events_result.get("items", []):
                 start = event.get("start", {})
-                end = event.get("end", {})
                 start_dt = start.get("dateTime", start.get("date", ""))
-                end_dt = end.get("dateTime", end.get("date", ""))
 
                 # Extract time portion
                 start_time = ""
@@ -103,9 +145,9 @@ def get_calendar(args):
 
                 all_events.append({
                     "start_time": start_time,
-                    "title": event.get("summary", "Untitled"),
+                    "title": event.get("summary", "Busy"),
                     "location": event.get("location", ""),
-                    "calendar": cal.get("summary", cal_id),
+                    "calendar": cal_name,
                     "_sort": start_dt,
                 })
 
