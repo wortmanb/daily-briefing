@@ -2,18 +2,18 @@
 
 A CLI tool that generates a morning briefing — weather, calendar, git status, system health, and Kubernetes status — all in one command.
 
-Zero dependencies. Just Node.js and your existing tools.
+Minimal dependencies. Python 3.9+ and your existing tools.
 
 ## Install
 
 ```bash
-# Clone and link
-git clone https://github.com/wortmanb/daily-briefing.git
+# Clone and install
+git clone git@github.com:wortmanb/daily-briefing.git
 cd daily-briefing
-npm link
+pip install -e .
 
-# Or just run directly
-node src/index.js
+# Or install directly from GitHub
+pip install git+ssh://git@github.com/wortmanb/daily-briefing.git
 ```
 
 ## Usage
@@ -43,12 +43,12 @@ daily-briefing --git-dirs ~/projects,~/work
 | Section | Source | Requires |
 |---------|--------|----------|
 | **Weather** | [wttr.in](https://wttr.in) API | Internet |
-| **Calendar** | `gcalcli` | gcalcli installed + configured |
+| **Calendar** | Google Calendar API | Service account (see setup below) |
 | **Git Status** | Local git repos | git |
-| **System** | OS stats + `df` | Linux/macOS |
+| **System** | OS stats (`/proc`, `df`) | Linux |
 | **Kubernetes** | `kubectl` | kubectl + cluster access |
 
-All sections degrade gracefully — if a tool isn't available, it skips with a note instead of crashing.
+All sections degrade gracefully — if a tool isn't available or not configured, it skips with a note instead of crashing.
 
 ## Configuration
 
@@ -56,8 +56,9 @@ All sections degrade gracefully — if a tool isn't available, it skips with a n
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `BRIEFING_LOCATION` | `Austin, TX` | Weather location |
+| `BRIEFING_LOCATION` | `Jeffersonton, VA 22724` | Weather location |
 | `BRIEFING_GIT_DIRS` | `~/git` | Comma-separated directories to scan for git repos |
+| `GOOGLE_SA_KEY` | `~/.config/daily-briefing/service-account.json` | Path to Google service account JSON key |
 
 ### CLI Flags
 
@@ -69,55 +70,76 @@ All sections degrade gracefully — if a tool isn't available, it skips with a n
 | `--git-dirs <dirs>` | Override git directories to scan |
 | `--help` | Show help |
 
+## Google Calendar Setup
+
+The calendar section uses a Google Cloud service account (works headless — no browser needed).
+
+1. **Create a GCP project** (or use an existing one)
+2. **Enable the Google Calendar API** in the project
+3. **Create a service account** and download the JSON key file
+4. **Share your calendar(s)** with the service account email (found in the JSON key as `client_email`)
+5. **Place the key file** at one of:
+   - `~/.config/daily-briefing/service-account.json` (default)
+   - Any path, then set `GOOGLE_SA_KEY=/path/to/key.json`
+
+If no key file is found, the calendar section gracefully skips with setup instructions.
+
 ## Example Output
 
 ```
-☀️ DAILY BRIEFING — Friday, January 30, 2026 7:00 AM
+☀️ DAILY BRIEFING — Saturday, January 31, 2026 7:00 AM
 
-🌤️ Weather — Austin, TX
-Partly Cloudy | 45°F (feels like 42°F)
-High: 62°F / Low: 38°F
-Humidity: 65% | Wind: 8 mph NNW
-UV: 3 | Rain chance: 10%
-Sunrise: 07:18 AM | Sunset: 06:02 PM
+🌤️ Weather — Jeffersonton, VA 22724
+Partly Cloudy | 32°F (feels like 28°F)
+High: 45°F / Low: 25°F
+Humidity: 72% | Wind: 5 mph NNW
+UV: 2 | Rain chance: 10%
+Sunrise: 07:15 AM | Sunset: 05:32 PM
 
-📅 Calendar — 3 events
-  09:00 — Team standup
-  11:30 — 1:1 with Sarah
-  14:00 — Architecture review @ Conf Room B
+📅 Calendar
+Google Calendar not configured — skipping.
 
 📦 Git Status — 12 repos
-⚠ 2 with uncommitted changes
-✓ 3 with recent commits
-  homelab (main) — 4 uncommitted, ↑2
-  daily-briefing (main) — 1 uncommitted
-  clawdbot (main) — 5 recent
+⚠ 2 repos with uncommitted changes
+✓ 3 repos with commits in last 24h
+
+  daily-briefing (python-rewrite) — 5 uncommitted
+  friday-ui (main) — 2 recent
 
 🖥️ System Health
-Uptime: 14d 6h 32m | CPUs: 16
-Load: 1.24 / 0.98 / 0.87
-Memory: 42% (13.4/32.0 GB)
+Uptime: 15d 3h 42m | CPUs: 8
+Load: 0.45 / 0.38 / 0.31
+Memory: 42% (6.7/16.0 GB)
 Disks: All healthy
 
 ☸️ Kubernetes
-Nodes: 4/4 ready
+Nodes: 6/6 ready
 Pods: 47 total
 All pods healthy ✓
 ```
 
-## Integration Ideas
-
-- **Cron job**: Run every morning and pipe to Telegram
-- **Clawdbot**: Use as a morning briefing source for your AI assistant
-- **tmux**: Show in a tmux pane on login
+## Development
 
 ```bash
-# Example: send plain briefing via curl to Telegram
-daily-briefing --format plain | curl -s -X POST \
-  "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
-  -d chat_id="$CHAT_ID" \
-  -d text="$(cat -)"
+# Install in dev mode
+pip install -e .
+
+# Run directly
+python -m daily_briefing
+
+# Run specific sections
+daily-briefing --sections weather,system --format plain
 ```
+
+## Migration from v1 (Node.js)
+
+v2 is a complete rewrite in Python. Key changes:
+- **Calendar**: Uses Google Calendar API with a service account instead of `gcalcli` (works headless)
+- **Default location**: Changed from Austin, TX to Jeffersonton, VA 22724
+- **Dependencies**: Only `google-api-python-client` and `google-auth` (for calendar); everything else uses Python stdlib
+- **Concurrency**: Uses `concurrent.futures.ThreadPoolExecutor` for parallel section execution
+
+The CLI interface is identical — same flags, same env vars, same output formats.
 
 ## License
 
