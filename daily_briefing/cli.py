@@ -6,7 +6,7 @@ from pathlib import Path
 
 DEFAULT_LOCATION = "Jeffersonton, VA 22724"
 DEFAULT_GIT_DIRS = os.environ.get("BRIEFING_GIT_DIRS", str(Path.home() / "git"))
-ALL_SECTIONS = ["weather", "calendar", "git", "system", "kubernetes"]
+ALL_SECTIONS = ["weather", "calendar", "reminders", "git", "system", "kubernetes"]
 
 
 def parse_args(argv=None):

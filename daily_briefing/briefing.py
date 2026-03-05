@@ -8,10 +8,12 @@ from .sections.calendar import get_calendar
 from .sections.gitstatus import get_git_status
 from .sections.system import get_system
 from .sections.kubernetes import get_kubernetes
+from .sections.reminders import get_reminders
 
 SECTION_RUNNERS = {
     "weather": get_weather,
     "calendar": get_calendar,
+    "reminders": get_reminders,
     "git": get_git_status,
     "system": get_system,
     "kubernetes": get_kubernetes,

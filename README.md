@@ -44,6 +44,7 @@ daily-briefing --git-dirs ~/projects,~/work
 |---------|--------|----------|
 | **Weather** | [wttr.in](https://wttr.in) API | Internet |
 | **Calendar** | Google Calendar API | Service account (see setup below) |
+| **Reminders** | `~/.config/daily-briefing/reminders.txt` | Optional |
 | **Git Status** | Local git repos | git |
 | **System** | OS stats (`/proc`, `df`) | Linux |
 | **Kubernetes** | `kubectl` | kubectl + cluster access |
@@ -58,6 +59,7 @@ All sections degrade gracefully — if a tool isn't available or not configured,
 |----------|---------|-------------|
 | `BRIEFING_LOCATION` | `Jeffersonton, VA 22724` | Weather location |
 | `BRIEFING_GIT_DIRS` | `~/git` | Comma-separated directories to scan for git repos |
+| `BRIEFING_REMINDERS_FILE` | `~/.config/daily-briefing/reminders.txt` | Plaintext reminders file |
 | `GOOGLE_SA_KEY` | `~/.config/daily-briefing/service-account.json` | Path to Google service account JSON key |
 
 ### CLI Flags

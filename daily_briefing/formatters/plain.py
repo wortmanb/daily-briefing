@@ -32,6 +32,20 @@ def _fmt_calendar(data):
     return "\n".join(lines)
 
 
+def _fmt_reminders(data):
+    if not data.get("available"):
+        return f"📝 Reminders\n{data.get('note', 'No reminders')}"
+    if data.get("error"):
+        return f"📝 Reminders\nError: {data['error']}"
+    reminders = data.get("reminders", [])
+    if not reminders:
+        return "📝 Reminders\nNo reminders"
+    lines = ["📝 Reminders"]
+    for r in reminders:
+        lines.append(f"  • {r}")
+    return "\n".join(lines)
+
+
 def _fmt_git(data):
     if data.get("error"):
         return f"📦 Git Status\nError: {data['error']}"
@@ -116,11 +130,12 @@ def format_plain(results):
     parts = [f"☀️ DAILY BRIEFING — {date_str} {time_str}", ""]
 
     s = results["sections"]
-    for key in ["weather", "calendar", "git", "system", "kubernetes"]:
+    for key in ["weather", "calendar", "reminders", "git", "system", "kubernetes"]:
         if key in s:
             formatter = {
                 "weather": _fmt_weather,
                 "calendar": _fmt_calendar,
+                "reminders": _fmt_reminders,
                 "git": _fmt_git,
                 "system": _fmt_system,
                 "kubernetes": _fmt_k8s,

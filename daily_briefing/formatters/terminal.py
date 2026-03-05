@@ -48,6 +48,20 @@ def _fmt_calendar(data):
     return "\n".join(lines)
 
 
+def _fmt_reminders(data):
+    if data.get("error"):
+        return f"{_header('📝', 'Reminders')}\n  {RED}Error: {data['error']}{RESET}"
+    if not data.get("available"):
+        return f"{_header('📝', 'Reminders')}\n  {DIM}{data.get('note', 'No reminders')}{RESET}"
+    reminders = data.get("reminders", [])
+    if not reminders:
+        return f"{_header('📝', 'Reminders')}\n  {DIM}No reminders{RESET}"
+    lines = [_header("📝", "Reminders")]
+    for r in reminders:
+        lines.append(f"  • {r}")
+    return "\n".join(lines)
+
+
 def _fmt_git(data):
     if data.get("error"):
         return f"{_header('📦', 'Git Status')}\n  {RED}Error: {data['error']}{RESET}"
@@ -156,11 +170,12 @@ def format_terminal(results):
     ]
 
     s = results["sections"]
-    for key in ["weather", "calendar", "git", "system", "kubernetes"]:
+    for key in ["weather", "calendar", "reminders", "git", "system", "kubernetes"]:
         if key in s:
             formatter = {
                 "weather": _fmt_weather,
                 "calendar": _fmt_calendar,
+                "reminders": _fmt_reminders,
                 "git": _fmt_git,
                 "system": _fmt_system,
                 "kubernetes": _fmt_k8s,
